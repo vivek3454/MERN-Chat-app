@@ -1,5 +1,5 @@
-import Signup from "./pages/Signup";
 import { Toaster } from "react-hot-toast";
+import Routes from "./routes/Routes";
 
 const App = () => {
 
@@ -9,7 +9,7 @@ const App = () => {
         position="top-center"
         reverseOrder={false}
       />
-      <Signup />
+      <Routes />
     </>
   );
 };

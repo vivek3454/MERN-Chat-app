@@ -1,26 +1,30 @@
 import React, { useState } from "react";
 import axiosInstance from "../helpers/axiosInstance";
 import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { login } from "../store/authSlice";
 
 const Signup = () => {
   const [userInfo, setUserInfo] = useState({ username: "", password: "" });
+  const dispatch = useDispatch();
 
   const handleOnChange = (e) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
   };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     let res = axiosInstance.post("/user/register", userInfo);
     toast.promise(res, {
       loading: "Loading",
-      success: ({data}) =>{
+      success: ({ data }) => {
+        dispatch(login({ username: data.user.username, id: data.user._id }));
         return data.message;
       },
       error: (err) => {
         return err.response.data.message;
       },
     });
-    res = await res;
   };
 
   return (

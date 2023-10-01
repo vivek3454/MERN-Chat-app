@@ -52,4 +52,16 @@ const register = async (req, res) => {
     }
 };
 
-export { register };
+const profile = async (req, res) => {
+    const token = req.cookies["chat-app-token"];
+    if (token) {
+        const userData = await jwt.verify(token, process.env.JWT_SECRET);
+        res.status(200).json({
+            success: true,
+            message: "User profile",
+            userData
+        });
+    }
+};
+
+export { register, profile };
