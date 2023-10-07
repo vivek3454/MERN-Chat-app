@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { profile, register } from "../controllers/user.controller.js";
+import { login, profile, register } from "../controllers/user.controller.js";
 
 const userRouter = Router();
 
 // create account
 userRouter.post("/register", register);
-userRouter.post("/profile", profile);
+userRouter.post("/login", login);
+userRouter.get("/profile", profile);
 
 export default userRouter;

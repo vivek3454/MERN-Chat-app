@@ -1,16 +1,17 @@
 import React from "react";
-import Signup from "../pages/Signup";
+import RegisterAndLogin from "../pages/RegisterAndLogin";
 import { useSelector } from "react-redux";
+import Chat from "../components/Chat";
 
 const Routes = () => {
     const { username, id } = useSelector((state) => state.auth);
     if (username) {
         return (
-            <h1>login</h1>
+            <Chat />
         );
     }
     return (
-        <Signup />
+        <RegisterAndLogin />
     );
 };
 
