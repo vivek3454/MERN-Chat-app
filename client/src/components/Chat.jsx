@@ -8,6 +8,9 @@ const Chat = () => {
     const [ws, setWs] = useState();
     const [onlineUsers, setOnlineUsers] = useState({});
     const [selectedUserId, setSelectedUserId] = useState("");
+    const [newMessageText, setNewMessageText] = useState("");
+    const [messages, setMessages] = useState([]);
+
     const { username, id } = useSelector(state => state.auth);
 
     useEffect(() => {
@@ -29,6 +32,19 @@ const Chat = () => {
         if ("online" in messageData) {
             showOnlinePeople(messageData.online);
         }
+        else {
+            setMessages(prev => [...prev, { text: messageData.text, isOur: false }]);
+        }
+    };
+
+    const sendMessage = (e) => {
+        e.preventDefault();
+        ws.send(JSON.stringify({
+            recipient: selectedUserId,
+            text: newMessageText
+        }));
+        setNewMessageText("");
+        setMessages(prev => [...prev, { text: newMessageText, isOur: true }]);
     };
 
     const onlineUsersExclCurrUser = { ...onlineUsers };
@@ -38,13 +54,13 @@ const Chat = () => {
         <section className="flex h-screen">
             <aside className="bg-blue-100 w-1/4">
                 <Logo />
-                {Object.keys({ userId: "sei363", username: "hello" }).map((userId) => (
+                {Object.keys(onlineUsersExclCurrUser).map((userId) => (
                     <div onClick={() => setSelectedUserId(userId)} className={`flex items-center gap-4 border-b border-gray-400 cursor-pointer ${userId === selectedUserId ? "bg-blue-200" : ""}`} key={userId}>
                         {userId === selectedUserId &&
                             <div className="w-1 bg-blue-500 h-12 rounded-r-md"></div>
                         }
                         <div className="flex items-center gap-4 py-2 pl-4 ">
-                            {/* <Avatar username={onlineUsers[userId]} userId={userId} /> */}
+                            <Avatar username={onlineUsers[userId]} userId={userId} />
                             <span className="text-gray-800">{onlineUsers[userId]}</span>
                         </div>
                     </div>
@@ -57,13 +73,20 @@ const Chat = () => {
                             <MdArrowCircleLeft size={25} className="mr-1" /> Select a chat
                         </div>
                     }
+                    {selectedUserId &&
+                        <div>
+                            {messages.map((message, i) => (
+                                <div key={i}>{message.text}</div>
+                            ))}
+                        </div>
+                    }
                 </div>
-                <div className="flex items-center absolute bottom-1 left-0 w-full">
-                    <input type="text" placeholder="Enter Message" className="bg-white p-4 w-full border border-gray-400 outline-none" />
+                {selectedUserId && <form onSubmit={sendMessage} className="flex items-center absolute bottom-1 left-0 w-full">
+                    <input onChange={(e) => setNewMessageText(e.target.value)} value={newMessageText} type="text" placeholder="Enter Message" className="bg-white p-4 w-full border border-gray-400 outline-none" />
                     <button className="bg-blue-500 p-4 text-white">
                         <MdSend size={25} />
                     </button>
-                </div>
+                </form>}
             </main>
         </section>
     );

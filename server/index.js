@@ -33,7 +33,7 @@ const server = app.listen(port);
 
 const webSocketServer = new WebSocketServer({ server });
 webSocketServer.on("connection", (connection, req) => {
-    console.log("connected");
+    // read username and id from the cookie for this connection
     const cookies = req.headers.cookie;
     if (cookies) {
         const tokenCookieString = cookies.split("; ").find(str => str.startsWith("chat-app-token="));
@@ -46,6 +46,18 @@ webSocketServer.on("connection", (connection, req) => {
             }
         }
     }
+
+    connection.on("message", (message) => {
+        const messageData = JSON.parse(message.toString());
+        const { recipient, text } = messageData;
+        if (recipient && text) {
+            [...webSocketServer.clients]
+                .filter((client) => client.userId === recipient)
+                .forEach(c => c.send(JSON.stringify({ text, sender: connection.userId })));
+        }
+    });
+
+    // notify everyone about online people (when someone connects)
     [...webSocketServer.clients].forEach((client) => {
         client.send(JSON.stringify(
             {
