@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
+import Message from "./models/message.model.js";
 
 configDotenv();
 
@@ -47,13 +48,24 @@ webSocketServer.on("connection", (connection, req) => {
         }
     }
 
-    connection.on("message", (message) => {
+    connection.on("message", async (message) => {
         const messageData = JSON.parse(message.toString());
         const { recipient, text } = messageData;
         if (recipient && text) {
+            const messageDoc = await Message.create({
+                sender: connection.userId,
+                recipient,
+                text
+            });
+
             [...webSocketServer.clients]
                 .filter((client) => client.userId === recipient)
-                .forEach(c => c.send(JSON.stringify({ text, sender: connection.userId })));
+                .forEach(c => c.send(JSON.stringify({
+                    text,
+                    sender: connection.userId,
+                    recipient,
+                    id: messageDoc._id
+                })));
         }
     });
 

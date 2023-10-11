@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MdSend, MdArrowCircleLeft } from "react-icons/md";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
 import { useSelector } from "react-redux";
+import { uniqBy } from "lodash";
 
 const Chat = () => {
     const [ws, setWs] = useState();
@@ -10,6 +11,8 @@ const Chat = () => {
     const [selectedUserId, setSelectedUserId] = useState("");
     const [newMessageText, setNewMessageText] = useState("");
     const [messages, setMessages] = useState([]);
+
+    const messageBoxRef = useRef();
 
     const { username, id } = useSelector(state => state.auth);
 
@@ -29,11 +32,12 @@ const Chat = () => {
 
     const handleMessage = (e) => {
         const messageData = JSON.parse(e.data);
+        console.log(e, messageData);
         if ("online" in messageData) {
             showOnlinePeople(messageData.online);
         }
-        else {
-            setMessages(prev => [...prev, { text: messageData.text, isOur: false }]);
+        else if ("text" in messageData) {
+            setMessages(prev => [...prev, { ...messageData }]);
         }
     };
 
@@ -44,11 +48,26 @@ const Chat = () => {
             text: newMessageText
         }));
         setNewMessageText("");
-        setMessages(prev => [...prev, { text: newMessageText, isOur: true }]);
+        setMessages(prev => [...prev, {
+            text: newMessageText,
+            sender: id,
+            recipient: selectedUserId,
+            id: Date.now()
+        }]);
     };
+
+    useEffect(() => {
+        const div = messageBoxRef?.current;
+        if (div) {
+            div.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+    }, [messages]);
+
 
     const onlineUsersExclCurrUser = { ...onlineUsers };
     delete onlineUsersExclCurrUser[id];
+
+    const messagesWithoutDupes = uniqBy(messages, "id");
 
     return (
         <section className="flex h-screen">
@@ -74,10 +93,15 @@ const Chat = () => {
                         </div>
                     }
                     {selectedUserId &&
-                        <div>
-                            {messages.map((message, i) => (
-                                <div key={i}>{message.text}</div>
+                        <div className="px-5 h-[90vh] overflow-y-scroll">
+                            {messagesWithoutDupes.map((message, i) => (
+                                <div key={i} className={`${message.sender === id ? "text-right" : "text-left"}`}>
+                                    <div className={`py-2 px-3 my-2 inline-block rounded-md text-sm ${message.sender === id ? "bg-blue-400 text-white" : "bg-white text-gray-500"}`}>
+                                        {message.text}
+                                    </div>
+                                </div>
                             ))}
+                            <div ref={messageBoxRef}></div>
                         </div>
                     }
                 </div>
