@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MdSend, MdArrowCircleLeft } from "react-icons/md";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
+import axiosInstance from "../helpers/axiosInstance";
 import { useSelector } from "react-redux";
 import { uniqBy } from "lodash";
 
@@ -17,11 +18,20 @@ const Chat = () => {
     const { username, id } = useSelector(state => state.auth);
 
     useEffect(() => {
+        connectionToWs();
+    }, []);
+
+    const connectionToWs = () => {
         const ws = new WebSocket("ws://localhost:5000");
         setWs(ws);
         ws.addEventListener("message", handleMessage);
-    }, []);
-
+        ws.addEventListener("close", () => {
+            setTimeout(() => {
+                connectionToWs();
+            }, 1000);
+        }
+        );
+    };
     const showOnlinePeople = (userArr) => {
         const users = {};
         userArr.forEach(({ userId, username }) => {
@@ -43,17 +53,19 @@ const Chat = () => {
 
     const sendMessage = (e) => {
         e.preventDefault();
-        ws.send(JSON.stringify({
-            recipient: selectedUserId,
-            text: newMessageText
-        }));
-        setNewMessageText("");
-        setMessages(prev => [...prev, {
-            text: newMessageText,
-            sender: id,
-            recipient: selectedUserId,
-            id: Date.now()
-        }]);
+        if (newMessageText) {
+            ws.send(JSON.stringify({
+                recipient: selectedUserId,
+                text: newMessageText
+            }));
+            setNewMessageText("");
+            setMessages(prev => [...prev, {
+                text: newMessageText,
+                sender: id,
+                recipient: selectedUserId,
+                id: Date.now()
+            }]);
+        }
     };
 
     useEffect(() => {
@@ -63,11 +75,21 @@ const Chat = () => {
         }
     }, [messages]);
 
+    useEffect(() => {
+        (async () => {
+            if (selectedUserId) {
+                const { data } = await axiosInstance.get(`/messages/${selectedUserId}`);
+                setMessages(data.messages);
+            }
+        })();
+
+    }, [selectedUserId]);
+
 
     const onlineUsersExclCurrUser = { ...onlineUsers };
     delete onlineUsersExclCurrUser[id];
 
-    const messagesWithoutDupes = uniqBy(messages, "id");
+    const messagesWithoutDupes = uniqBy(messages, "_id");
 
     return (
         <section className="flex h-screen">
