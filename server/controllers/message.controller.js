@@ -15,5 +15,17 @@ const getSelectedUsersmessages = async (req, res) => {
 };
 
 const createmessage = async () => { };
+const deletemessage = async (req, res) => {
+    const { messageId } = req.params;
+    await Message.findByIdAndDelete(messageId);
+    const { userId } = await getUserDataFromRequest(req);
+    await Message.findOneAndDelete({ sender: userId, _id: messageId });
 
-export { getSelectedUsersmessages, createmessage };
+    res.status(200).json({
+        success: true,
+        message: "Message deleted"
+    });
+
+};
+
+export { getSelectedUsersmessages, createmessage, deletemessage };

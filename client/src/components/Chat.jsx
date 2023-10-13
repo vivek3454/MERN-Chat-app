@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MdSend, MdArrowCircleLeft } from "react-icons/md";
+import { MdSend, MdArrowCircleLeft, MdMenu, MdDelete } from "react-icons/md";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
 import axiosInstance from "../helpers/axiosInstance";
 import { useSelector } from "react-redux";
 import { uniqBy } from "lodash";
+import Message from "./Message";
+import Contact from "./Contact";
 
 const Chat = () => {
     const [ws, setWs] = useState();
     const [onlineUsers, setOnlineUsers] = useState({});
+    const [offlineUsers, setOfflineUsers] = useState([]);
     const [selectedUserId, setSelectedUserId] = useState("");
     const [newMessageText, setNewMessageText] = useState("");
     const [messages, setMessages] = useState([]);
@@ -39,15 +42,14 @@ const Chat = () => {
         });
         setOnlineUsers(users);
     };
-
     const handleMessage = (e) => {
         const messageData = JSON.parse(e.data);
-        console.log(e, messageData);
         if ("online" in messageData) {
             showOnlinePeople(messageData.online);
         }
         else if ("text" in messageData) {
             setMessages(prev => [...prev, { ...messageData }]);
+            getMessages();
         }
     };
 
@@ -65,6 +67,7 @@ const Chat = () => {
                 recipient: selectedUserId,
                 id: Date.now()
             }]);
+            getMessages();
         }
     };
 
@@ -75,39 +78,63 @@ const Chat = () => {
         }
     }, [messages]);
 
+    const getMessages = async () => {
+        if (selectedUserId) {
+            const { data } = await axiosInstance.get(`/messages/${selectedUserId}`);
+            setMessages(data.messages);
+        }
+    };
+
+    useEffect(() => {
+        getMessages();
+    }, [selectedUserId]);
+
     useEffect(() => {
         (async () => {
-            if (selectedUserId) {
-                const { data } = await axiosInstance.get(`/messages/${selectedUserId}`);
-                setMessages(data.messages);
-            }
+            const { data } = await axiosInstance.get("user/allusers");
+            const offlineUsers = {};
+            data.users
+                .filter((user) => user._id !== id)
+                .filter((user) => !Object.keys(onlineUsers).includes(user._id))
+                .forEach(user => {
+                    offlineUsers[user._id] = user;
+                });
+            setOfflineUsers(offlineUsers);
         })();
-
-    }, [selectedUserId]);
+    }, [onlineUsers]);
 
 
     const onlineUsersExclCurrUser = { ...onlineUsers };
     delete onlineUsersExclCurrUser[id];
-
     const messagesWithoutDupes = uniqBy(messages, "_id");
 
     return (
         <section className="flex h-screen">
-            <aside className="bg-blue-100 w-1/4">
+            <aside className="bg-white w-1/4">
                 <Logo />
-                {Object.keys(onlineUsersExclCurrUser).map((userId) => (
-                    <div onClick={() => setSelectedUserId(userId)} className={`flex items-center gap-4 border-b border-gray-400 cursor-pointer ${userId === selectedUserId ? "bg-blue-200" : ""}`} key={userId}>
-                        {userId === selectedUserId &&
-                            <div className="w-1 bg-blue-500 h-12 rounded-r-md"></div>
-                        }
-                        <div className="flex items-center gap-4 py-2 pl-4 ">
-                            <Avatar username={onlineUsers[userId]} userId={userId} />
-                            <span className="text-gray-800">{onlineUsers[userId]}</span>
-                        </div>
-                    </div>
+                {Object.keys(onlineUsersExclCurrUser).map((userId, i) => (
+                    <Contact
+                        key={i}
+                        online={true}
+                        userId={userId}
+                        selectedUserId={selectedUserId}
+                        setSelectedUserId={setSelectedUserId}
+                        username={onlineUsersExclCurrUser[userId]}
+                    />
                 ))}
+                {Object.keys(offlineUsers).map((userId, i) => (
+                    <Contact
+                        key={i}
+                        online={false}
+                        userId={userId}
+                        selectedUserId={selectedUserId}
+                        setSelectedUserId={setSelectedUserId}
+                        username={offlineUsers[userId].username}
+                    />
+                ))}
+
             </aside>
-            <main className="bg-blue-200 w-3/4 relative">
+            <main className="bg-blue-100 w-3/4 relative">
                 <div>
                     {!selectedUserId &&
                         <div className="flex items-center justify-center h-screen text-gray-400">
@@ -115,16 +142,18 @@ const Chat = () => {
                         </div>
                     }
                     {selectedUserId &&
-                        <div className="px-5 h-[90vh] overflow-y-scroll">
-                            {messagesWithoutDupes.map((message, i) => (
-                                <div key={i} className={`${message.sender === id ? "text-right" : "text-left"}`}>
-                                    <div className={`py-2 px-3 my-2 inline-block rounded-md text-sm ${message.sender === id ? "bg-blue-400 text-white" : "bg-white text-gray-500"}`}>
-                                        {message.text}
-                                    </div>
-                                </div>
-                            ))}
-                            <div ref={messageBoxRef}></div>
-                        </div>
+                        <>
+                            <div className="flex items-center gap-4 py-[14px] pl-4 bg-white">
+                                <Avatar username={onlineUsers[selectedUserId] ? onlineUsers[selectedUserId] : offlineUsers[selectedUserId].username} userId={selectedUserId} online={onlineUsers[selectedUserId] ? true : false} />
+                                <span className="text-gray-800">{onlineUsers[selectedUserId] ? onlineUsers[selectedUserId] : offlineUsers[selectedUserId].username}</span>
+                            </div>
+                            <div className="px-5 h-[90vh] overflow-y-scroll">
+                                {messagesWithoutDupes.map((message, i) => (
+                                    <Message key={i} message={message} selectedUserId={selectedUserId} getMessages={getMessages} />
+                                ))}
+                                <div ref={messageBoxRef}></div>
+                            </div>
+                        </>
                     }
                 </div>
                 {selectedUserId && <form onSubmit={sendMessage} className="flex items-center absolute bottom-1 left-0 w-full">

@@ -2,6 +2,13 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 
+const cookieOptions = {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "none",
+    secure: true
+};
+
 const register = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -37,8 +44,7 @@ const register = async (req, res) => {
         user.password = undefined;
 
         const token = await jwt.sign({ userId: user._id, username: user.username }, process.env.JWT_SECRET);
-
-        res.cookie("chat-app-token", token, { sameSite: "none", secure: true });
+        res.cookie("chat-app-token", token, cookieOptions);
         res.status(201).json({
             success: true,
             message: "User registered successfully",
@@ -76,7 +82,7 @@ const login = async (req, res) => {
             const isPasswordCorrect = await bcrypt.compare(password, isUserExist.password);
             if (isPasswordCorrect) {
                 const token = await jwt.sign({ userId: isUserExist._id, username: isUserExist.username }, process.env.JWT_SECRET);
-                res.cookie("chat-app-token", token, { sameSite: "none", secure: true });
+                res.cookie("chat-app-token", token, cookieOptions);
 
                 return res.status(200).json({
                     success: true,
@@ -111,5 +117,23 @@ const profile = async (req, res) => {
         });
     }
 };
+const allUsers = async (req, res) => {
+    try {
+        const users = await User.find({});
+        if (users.length > 0) {
+            res.status(200).json({
+                success: true,
+                message: "All Users",
+                users
+            });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
 
-export { register, login, profile };
+    }
+};
+
+export { register, login, profile, allUsers };
