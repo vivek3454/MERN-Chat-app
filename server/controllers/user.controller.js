@@ -117,6 +117,15 @@ const profile = async (req, res) => {
         });
     }
 };
+
+const logout = async (req, res) => {
+    res.cookie("chat-app-token", "", cookieOptions);
+    res.status(200).json({
+        success: true,
+        message: "User logout"
+    });
+};
+
 const allUsers = async (req, res) => {
     try {
         const users = await User.find({});
@@ -136,4 +145,4 @@ const allUsers = async (req, res) => {
     }
 };
 
-export { register, login, profile, allUsers };
+export { register, login, profile, allUsers, logout };

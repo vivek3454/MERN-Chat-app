@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MdSend, MdArrowCircleLeft, MdMenu, MdDelete } from "react-icons/md";
+import { MdSend, MdArrowCircleLeft } from "react-icons/md";
+import { FaUser } from "react-icons/fa";
+import axiosInstance from "../helpers/axiosInstance";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "../store/authSlice";
+import { uniqBy } from "lodash";
 import Avatar from "./Avatar";
 import Logo from "./Logo";
-import axiosInstance from "../helpers/axiosInstance";
-import { useSelector } from "react-redux";
-import { uniqBy } from "lodash";
 import Message from "./Message";
 import Contact from "./Contact";
+import toast from "react-hot-toast";
 
 const Chat = () => {
     const [ws, setWs] = useState();
@@ -17,6 +20,7 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
 
     const messageBoxRef = useRef();
+    const dispatch = useDispatch();
 
     const { username, id } = useSelector(state => state.auth);
 
@@ -84,6 +88,14 @@ const Chat = () => {
             setMessages(data.messages);
         }
     };
+    const handleLogout = async () => {
+        toast.loading("loading");
+        await axiosInstance.post("/user/logout", );
+        setWs(null);
+        toast.dismiss();
+        toast.success("logged out");
+        dispatch(logout());
+    };
 
     useEffect(() => {
         getMessages();
@@ -110,29 +122,37 @@ const Chat = () => {
 
     return (
         <section className="flex h-screen">
-            <aside className="bg-white w-1/4">
-                <Logo />
-                {Object.keys(onlineUsersExclCurrUser).map((userId, i) => (
-                    <Contact
-                        key={i}
-                        online={true}
-                        userId={userId}
-                        selectedUserId={selectedUserId}
-                        setSelectedUserId={setSelectedUserId}
-                        username={onlineUsersExclCurrUser[userId]}
-                    />
-                ))}
-                {Object.keys(offlineUsers).map((userId, i) => (
-                    <Contact
-                        key={i}
-                        online={false}
-                        userId={userId}
-                        selectedUserId={selectedUserId}
-                        setSelectedUserId={setSelectedUserId}
-                        username={offlineUsers[userId].username}
-                    />
-                ))}
-
+            <aside className="bg-white w-1/4 flex flex-col justify-between">
+                <div className="overflow-y-auto">
+                    <Logo />
+                    {Object.keys(onlineUsersExclCurrUser).map((userId, i) => (
+                        <Contact
+                            key={i}
+                            online={true}
+                            userId={userId}
+                            selectedUserId={selectedUserId}
+                            setSelectedUserId={setSelectedUserId}
+                            username={onlineUsersExclCurrUser[userId]}
+                        />
+                    ))}
+                    {Object.keys(offlineUsers).map((userId, i) => (
+                        <Contact
+                            key={i}
+                            online={false}
+                            userId={userId}
+                            selectedUserId={selectedUserId}
+                            setSelectedUserId={setSelectedUserId}
+                            username={offlineUsers[userId].username}
+                        />
+                    ))}
+                </div>
+                <div className="w-full text-center mb-5 flex justify-center items-center">
+                    <span className="mr-3 flex items-center gap-1 text-gray-600">
+                        <FaUser />
+                        {username}
+                    </span>
+                    <button onClick={handleLogout} className="px-3 py-1 bg-blue-400 rounded-md hover:bg-blue-500 text-white">logout</button>
+                </div>
             </aside>
             <main className="bg-blue-100 w-3/4 relative">
                 <div>

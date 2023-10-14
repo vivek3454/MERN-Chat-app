@@ -5,6 +5,34 @@ import { WebSocketServer } from "ws";
 const webSocketServerConnection = async (server) => {
     const webSocketServer = new WebSocketServer({ server });
     webSocketServer.on("connection", (connection, req) => {
+
+        const notifyAboutOnlinePeople = () => {
+            // notify everyone about online people (when someone connects)
+            [...webSocketServer.clients].forEach((client) => {
+                client.send(JSON.stringify(
+                    {
+                        online: [...webSocketServer.clients].map(c => ({ userId: c.userId, username: c.username }))
+                    }
+                ));
+            });
+        };
+
+        connection.isAlive = true;
+
+        connection.timer = setInterval(() => {
+            connection.ping();
+            connection.deathTimer = setTimeout(() => {
+                connection.isAlive = false;
+                clearInterval(connection.timer);
+                connection.terminate();
+                notifyAboutOnlinePeople();
+            }, 1000);
+        }, 4000);
+
+        connection.on("pong", () => {
+            clearTimeout(connection.deathTimer);
+        });
+
         // read username and id from the cookie for this connection
         const cookies = req.headers.cookie;
         if (cookies) {
@@ -40,14 +68,9 @@ const webSocketServerConnection = async (server) => {
             }
         });
 
-        // notify everyone about online people (when someone connects)
-        [...webSocketServer.clients].forEach((client) => {
-            client.send(JSON.stringify(
-                {
-                    online: [...webSocketServer.clients].map(c => ({ userId: c.userId, username: c.username }))
-                }
-            ));
-        });
+        notifyAboutOnlinePeople();
+
     });
+
 };
 export { webSocketServerConnection };
