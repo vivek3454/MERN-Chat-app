@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MdSend, MdArrowCircleLeft } from "react-icons/md";
+import { MdSend, MdArrowCircleLeft, MdFileUpload } from "react-icons/md";
 import { FaUser } from "react-icons/fa";
+import { RiAttachment2 } from "react-icons/ri";
 import axiosInstance from "../helpers/axiosInstance";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../store/authSlice";
@@ -18,6 +19,7 @@ const Chat = () => {
     const [selectedUserId, setSelectedUserId] = useState("");
     const [newMessageText, setNewMessageText] = useState("");
     const [messages, setMessages] = useState([]);
+    const [image, setImage] = useState("");
 
     const messageBoxRef = useRef();
     const dispatch = useDispatch();
@@ -39,6 +41,7 @@ const Chat = () => {
         }
         );
     };
+
     const showOnlinePeople = (userArr) => {
         const users = {};
         userArr.forEach(({ userId, username }) => {
@@ -46,6 +49,7 @@ const Chat = () => {
         });
         setOnlineUsers(users);
     };
+
     const handleMessage = (e) => {
         const messageData = JSON.parse(e.data);
         if ("online" in messageData) {
@@ -53,12 +57,14 @@ const Chat = () => {
         }
         else if ("text" in messageData) {
             setMessages(prev => [...prev, { ...messageData }]);
-            getMessages();
+        }
+        else if ("file" in messageData) {
+            setMessages(prev => [...prev, { ...messageData }]);
         }
     };
 
-    const sendMessage = (e) => {
-        e.preventDefault();
+    const sendMessage = (e, file = null) => {
+        if (e) e.preventDefault();
         if (newMessageText) {
             ws.send(JSON.stringify({
                 recipient: selectedUserId,
@@ -71,8 +77,32 @@ const Chat = () => {
                 recipient: selectedUserId,
                 id: Date.now()
             }]);
-            getMessages();
         }
+        else if (file) {
+            ws.send(JSON.stringify({
+                recipient: selectedUserId,
+                file
+            }));
+            setMessages(prev => [...prev, {
+                file: file?.data,
+                sender: id,
+                recipient: selectedUserId,
+                id: Date.now()
+            }]);
+        }
+    };
+
+    const sendFile = async (e) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(e.target.files[0]);
+        reader.onload = () => {
+            setImage(reader.result);
+            sendMessage(null, {
+                name: e.target.files[0].name,
+                data: reader.result
+            });
+        };
+
     };
 
     useEffect(() => {
@@ -82,15 +112,18 @@ const Chat = () => {
         }
     }, [messages]);
 
+
     const getMessages = async () => {
         if (selectedUserId) {
             const { data } = await axiosInstance.get(`/messages/${selectedUserId}`);
             setMessages(data.messages);
         }
     };
+
+
     const handleLogout = async () => {
         toast.loading("loading");
-        await axiosInstance.post("/user/logout", );
+        await axiosInstance.post("/user/logout",);
         setWs(null);
         toast.dismiss();
         toast.success("logged out");
@@ -99,7 +132,7 @@ const Chat = () => {
 
     useEffect(() => {
         getMessages();
-    }, [selectedUserId]);
+    }, [selectedUserId, setMessages]);
 
     useEffect(() => {
         (async () => {
@@ -163,13 +196,19 @@ const Chat = () => {
                     }
                     {selectedUserId &&
                         <>
-                            <div className="flex items-center gap-4 py-[14px] pl-4 bg-white">
+                            <div className="flex items-center gap-4 py-[14px] pl-4 bg-white shadow-md">
                                 <Avatar username={onlineUsers[selectedUserId] ? onlineUsers[selectedUserId] : offlineUsers[selectedUserId].username} userId={selectedUserId} online={onlineUsers[selectedUserId] ? true : false} />
                                 <span className="text-gray-800">{onlineUsers[selectedUserId] ? onlineUsers[selectedUserId] : offlineUsers[selectedUserId].username}</span>
                             </div>
-                            <div className="px-5 h-[90vh] overflow-y-scroll">
+                            <div className="px-5 h-[81vh] overflow-y-scroll pb-4">
                                 {messagesWithoutDupes.map((message, i) => (
-                                    <Message key={i} message={message} selectedUserId={selectedUserId} getMessages={getMessages} />
+                                    <Message
+                                        key={i}
+                                        message={message}
+                                        selectedUserId={selectedUserId}
+                                        getMessages={getMessages}
+                                        image={image}
+                                    />
                                 ))}
                                 <div ref={messageBoxRef}></div>
                             </div>
@@ -177,8 +216,12 @@ const Chat = () => {
                     }
                 </div>
                 {selectedUserId && <form onSubmit={sendMessage} className="flex items-center absolute bottom-1 left-0 w-full">
-                    <input onChange={(e) => setNewMessageText(e.target.value)} value={newMessageText} type="text" placeholder="Enter Message" className="bg-white p-4 w-full border border-gray-400 outline-none" />
-                    <button className="bg-blue-500 p-4 text-white">
+                    <input onChange={(e) => setNewMessageText(e.target.value)} value={newMessageText} type="text" placeholder="Enter Message" className="bg-white p-4 w-full border border-gray-300 outline-none" />
+                    <label htmlFor="file" className="bg-blue-200 border-2 cursor-pointer border-blue-300 p-4 text-black ml-2">
+                        <input type="file" className="hidden" onChange={sendFile} name="file" id="file" />
+                        <RiAttachment2 size={25} />
+                    </label>
+                    <button className="bg-blue-500 p-4 text-white ml-2">
                         <MdSend size={25} />
                     </button>
                 </form>}

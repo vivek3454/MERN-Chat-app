@@ -4,6 +4,7 @@ const messageSchema = new Schema({
     sender: { type: Schema.Types.ObjectId, ref: "User" },
     recipient: { type: Schema.Types.ObjectId, ref: "User" },
     text: { type: String },
+    file: { type: String },
 }, { timestamps: true });
 
 const Message = model("Message", messageSchema);

@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import Message from "../models/message.model.js";
 import { WebSocketServer } from "ws";
+import fs from "fs";
+import path from "path";
 
 const webSocketServerConnection = async (server) => {
     const webSocketServer = new WebSocketServer({ server });
@@ -49,7 +51,29 @@ const webSocketServerConnection = async (server) => {
 
         connection.on("message", async (message) => {
             const messageData = JSON.parse(message.toString());
-            const { recipient, text } = messageData;
+            const { recipient, text, file } = messageData;
+            let filename;
+            if (recipient && file) {
+                const ext = path.extname(file.name);
+                filename = `${Date.now()}${ext}`;
+                const bufferData = new Buffer(file.data, "base64");
+                fs.writeFileSync(`${path.resolve()}/uploads/${filename}`, bufferData);
+                const data = fs.readFileSync(`${path.resolve()}/uploads/${filename}`, "utf8");
+                console.log(data);
+                const messageDoc = await Message.create({
+                    sender: connection.userId,
+                    recipient,
+                    file: file ? file.data : null
+                });
+                [...webSocketServer.clients]
+                    .filter((client) => client.userId === recipient)
+                    .forEach(c => c.send(JSON.stringify({
+                        file: file ? file.data : null,
+                        sender: connection.userId,
+                        recipient,
+                        _id: messageDoc._id
+                    })));
+            }
             if (recipient && text) {
                 const messageDoc = await Message.create({
                     sender: connection.userId,
